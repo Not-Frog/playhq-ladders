@@ -7,8 +7,8 @@ app = Flask(__name__)
 PLAYHQ_URL = "https://api.playhq.com/graphql"
  
 PLAYHQ_QUERY = """
-query DiscoverGrade($gradeID: ID!) {
-  discoverGrade(gradeID: $gradeID) {
+query {
+  discoverGrade(gradeID: "%s") {
     id
     name
     ladder {
@@ -54,9 +54,7 @@ HEADERS = {
  
 def fetch_ladder(grade_id):
     payload = {
-        "operationName": "DiscoverGrade",
-        "query": PLAYHQ_QUERY,
-        "variables": {"gradeID": grade_id},
+        "query": PLAYHQ_QUERY % grade_id,
     }
     res = requests.post(
         PLAYHQ_URL,
