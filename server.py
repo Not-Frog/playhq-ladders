@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
 import requests
 import json
- 
+
 app = Flask(__name__)
- 
+
 PLAYHQ_URL = "https://api.playhq.com/graphql"
- 
+
 PLAYHQ_QUERY = """
 query {
   discoverGrade(gradeID: "%s") {
@@ -28,7 +28,7 @@ query {
   }
 }
 """
- 
+
 # These headers closely mimic what a real browser sends to PlayHQ
 HEADERS = {
     "User-Agent": (
@@ -49,9 +49,10 @@ HEADERS = {
     "Sec-Ch-Ua-Mobile": "?0",
     "Sec-Ch-Ua-Platform": '"macOS"',
     "Connection": "keep-alive",
+    "tenant": "afl",
 }
- 
- 
+
+
 def fetch_ladder(grade_id):
     payload = {
         "query": PLAYHQ_QUERY % grade_id,
@@ -63,42 +64,42 @@ def fetch_ladder(grade_id):
         timeout=15,
     )
     return res
- 
- 
+
+
 @app.route("/ladder")
 def ladder():
     grade_id = request.args.get("id")
     if not grade_id:
         return jsonify({"error": "Missing ?id= parameter"}), 400
- 
+
     try:
         res = fetch_ladder(grade_id)
     except requests.exceptions.Timeout:
         return jsonify({"error": "PlayHQ request timed out"}), 504
     except Exception as e:
         return jsonify({"error": str(e)}), 500
- 
+
     if res.status_code != 200:
         return jsonify({
             "error": "PlayHQ returned non-200",
             "status": res.status_code,
             "body": res.text[:500],
         }), res.status_code
- 
+
     try:
         data = res.json()
     except Exception:
         return jsonify({"error": "PlayHQ returned invalid JSON", "raw": res.text[:500]}), 500
- 
+
     if "errors" in data:
         return jsonify({"error": "GraphQL errors", "details": data["errors"]}), 400
- 
+
     try:
         grade = data["data"]["discoverGrade"]
         standings = grade["ladder"][0]["standings"]
     except (KeyError, IndexError, TypeError) as e:
         return jsonify({"error": f"Unexpected response shape: {e}", "raw": data}), 500
- 
+
     result = []
     for i, s in enumerate(standings):
         result.append({
@@ -114,18 +115,17 @@ def ladder():
             "percentage": s["percentage"],
             "points": s["competitionPoints"],
         })
- 
+
     return jsonify({
         "grade": grade["name"],
         "standings": result,
     })
- 
- 
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
- 
- 
+
+
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
- 
