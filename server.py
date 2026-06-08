@@ -5,7 +5,6 @@ import json
 app = Flask(__name__)
 
 PLAYHQ_URL = "https://api.playhq.com/graphql"
-
 PLAYHQ_QUERY = """
 query {
   discoverGrade(gradeID: "%s") {
@@ -29,7 +28,6 @@ query {
 }
 """
 
-# These headers closely mimic what a real browser sends to PlayHQ
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -71,7 +69,6 @@ def ladder():
     grade_id = request.args.get("id")
     if not grade_id:
         return jsonify({"error": "Missing ?id= parameter"}), 400
-
     try:
         res = fetch_ladder(grade_id)
     except requests.exceptions.Timeout:
@@ -120,6 +117,24 @@ def ladder():
         "grade": grade["name"],
         "standings": result,
     })
+
+
+@app.route("/sheet")
+def sheet():
+    SHEET_ID = "1_wefIu8-qilBrkwKvAmw3qUKKs-iX5uDcA5TIRBV5Qs"
+    API_KEY  = "AIzaSyDYg06CQemHSB2ICeltSLtRDnIP7IH04JQ"
+    url = (
+        f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}"
+        f"/values/All%20Ladders?key={API_KEY}"
+    )
+    try:
+        res = requests.get(url, timeout=15)
+        data = res.json()
+        response = jsonify(data)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/health")
