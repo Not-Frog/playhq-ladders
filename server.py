@@ -119,13 +119,16 @@ def ladder():
         }), res.status_code
 
     try:
-        # requests automatically decompresses gzip/brotli when we call .json()
-        data = res.json()
-    except Exception:
-        return jsonify({
-            "error": "PlayHQ returned invalid JSON",
-            "raw": res.content[:200].hex()  # show hex for debugging
-        }), 500
+        import gzip, zlib
+        raw = res.content
+        # Try to decompress if needed
+        if raw[:2] == b'\x1f\x8b':  # gzip magic bytes
+            raw = gzip.decompress(raw)
+        elif raw[:2] == b'\x78\x9c' or raw[:2] == b'\x78\x01' or raw[:2] == b'\x78\xda':
+            raw = zlib.decompress(raw)
+        data = json.loads(raw.decode('utf-8'))
+    except Exception as e:
+        return jsonify({"error": "PlayHQ returned invalid JSON", "detail": str(e)}), 500
 
     if "errors" in data:
         return jsonify({"error": "GraphQL errors", "details": data["errors"]}), 400
