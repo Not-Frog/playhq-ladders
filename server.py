@@ -39,7 +39,6 @@ HEADERS = {
     ),
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-AU,en-GB;q=0.9,en;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
     "Content-Type": "application/json",
     "Origin": "https://www.playhq.com",
     "Referer": "https://www.playhq.com/",
@@ -120,9 +119,13 @@ def ladder():
         }), res.status_code
 
     try:
+        # requests automatically decompresses gzip/brotli when we call .json()
         data = res.json()
     except Exception:
-        return jsonify({"error": "PlayHQ returned invalid JSON", "raw": res.text[:500]}), 500
+        return jsonify({
+            "error": "PlayHQ returned invalid JSON",
+            "raw": res.content[:200].hex()  # show hex for debugging
+        }), 500
 
     if "errors" in data:
         return jsonify({"error": "GraphQL errors", "details": data["errors"]}), 400
